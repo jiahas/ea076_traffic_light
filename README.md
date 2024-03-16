@@ -6,3 +6,5 @@ projeto no tinkercad: https://www.tinkercad.com/things/1d0uKh5hBB8-copy-of-circu
 link do fluxograma: https://excalidraw.com/#room=029f1f8105789c48c017,svo9WOEHslKvmaL2muIlKQ
 
 ![Fluxograma](fluxograma/fluxograma.png)
+
+![Esquematico](imagens/Esquematico.png)
