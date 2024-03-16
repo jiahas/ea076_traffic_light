@@ -1,29 +1,29 @@
 #include <Arduino.h>
 
 // Definição LDR
-#define LDR A0;
+#define LDR A0
 
 // Definição dos Leds para os carros
-#define C_VERMELHO A1;
-#define C_AMARELO A2;
-#define C_VERDE A3;
+#define C_VERMELHO A1
+#define C_AMARELO A2
+#define C_VERDE A3
 
 // Definição dos Leds para os pedestres
-#define P_VERMELHO A4;
-#define P_VERDE A5;
+#define P_VERMELHO A4
+#define P_VERDE A5
 
 // Definição botão dos pedestres
-#define BOTAO 6;
+#define BOTAO 6
 
 // Definição do decodificador de 7 segmentos CD4511
-#define ENTRADA_2 9;
-#define ENTRADA_3 10;
-#define ENTRADA_4 11;
-#define ENTRADA_1 8;
+#define ENTRADA_2 9
+#define ENTRADA_3 10
+#define ENTRADA_4 11
+#define ENTRADA_1 8
 
 // Definição dos displays de 7 segmentos
-#define COM_CARROS 5;
-#define COM_PEDESTRES 4;
+#define COM_CARROS 5
+#define COM_PEDESTRES 4
 
 // Variaveis Globais
 int contador = 9;
