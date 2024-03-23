@@ -1,5 +1,5 @@
 #include <Arduino.h>
-
+#include <stdio.h>
 // Definição LDR
 #define LDR A0
 
@@ -26,10 +26,10 @@
 #define COM_PEDESTRES 4
 
 // Variaveis Globais
-int contador = 9;
-
-
-
+int cont = 0;
+int state = 0;
+int cont_disp_c = 0;
+int cont_disp_p = 0;
 // put function declarations here:
 
 
@@ -46,50 +46,85 @@ void setup() {
   pinMode(LDR, INPUT);
 
 // Registrador CD4511
-  DDRB = B00001111;
-  DDRD = B01110000;
-  PORTB = 0x00;
-  PORTD = 0x00;
-
+  DDRD = 0b01110000; // define os pinos 4 a 7 do Arduino como saídas, outros pinos como entrada
+  PORTD = 0b0000000; // Determina estado inicial dos pinos (porta D) com nível lógico baixo
+  DDRB = 0b00001111; // define os pinos 8 e 9 do Arduino como saídas, outros pinos como entrada
+  PORTB = 0b0000000; // Determina estado inicial dos pinos (porta B) com nível lógico baixo
+  
 // Início
   digitalWrite(C_VERDE, HIGH);
   digitalWrite(P_VERMELHO, HIGH);
 
-// Interrupções
-cli(); // desabilita as interrupções
-configuracao_Timer0(); // configura o temporizador
-sei(); // habilita as interrupções
+  // Interrupções
+  cli(); // desabilita as interrupções
+  configuracao_Timer0(); // configura o temporizador
+  sei(); // habilita as interrupções
+  Serial.begin(9600);
+
 }
 
 void loop() {
-  
-  if(digitalRead(BOTAO)){
-    //interrupção 100ms
+
+  if(digitalRead(BOTAO) && state == 0){
+    Serial.print("Pedestre apertou botao\n");
+    state = 1;
+    cont = 0;
+  }
+         
+  if(cont >= 13 && state==1){
+    Serial.print("Farol amarelo aceso\n");
+    state = 2;
     digitalWrite(C_VERDE, LOW);
     digitalWrite(C_AMARELO, HIGH);
-    //Delay de 4s
-
+    cont = 0;
+   }
+  
+  if(cont >= 500 && state==2){
+    Serial.print("Passagem de pedestre\n");
+    state = 3;
+    // Inicio da contagem do displar
+    // Carros em nove
+    // Pedestre em cinco
     digitalWrite(C_AMARELO, LOW);
     digitalWrite(C_VERMELHO, HIGH);
+    digitalWrite(P_VERMELHO, LOW);
     digitalWrite(P_VERDE, HIGH);
+    cont_disp_c= 1125;
+    cont_disp_p= 625;
+    cont = 0;
+  }
+  
+  if(cont >= 1125 && state == 3){
+    // Contagem do pedestre
+    Serial.print("Cruzamento aberto\n");
+    digitalWrite(P_VERDE, LOW);
+    digitalWrite(P_VERMELHO, HIGH);
+    digitalWrite(C_VERDE, HIGH);
+    digitalWrite(C_VERMELHO, LOW);
+    state = 0;
+  }
+  
     
-    //Display carros
-    while (contador <= 0){
-      PORTB = contador << 2;
-      //Espera um segundo (delay?)
-      contador--;
-      if(contador <= 5){
-        PORTD = 0x08;
-        //Delay 1s
-        PORTD = 0x00;
-        //Delay de 1s
+  if(state == 3){
+    // Seta display
+    // Começa o decremento
+    PORTB = int(8*cont_disp_c/1000);
+    PORTD &= ~(1<<5); // Ativa display carros
+    PORTD |= (1<<5); // Trava o dígito no display carros
+    PORTB = int(8*cont_disp_p/1000);
+    PORTD &= ~(1<<4); // Ativa display pedestre
+    PORTD |= (1<<4); // Trava o dígito no display pedestre
+    if (cont_disp_c < 625){
+      cont = 0;
+      PORTD &= ~(0<<4);
+      if(cont>62){
+        PORTD |= (0<<4);
+        cont = 0;
       }
     }
-    contador = 9;
-    
+  }	
 
 
-  }
 }
 
 
@@ -105,7 +140,7 @@ void configuracao_Timer0(){
   // Intervalo entre interrupcoes: (Prescaler/Frequência)*Faixa 
   
   // OCR0A – Output Compare Register A
-  OCR0A = valor da Faixa;
+  OCR0A = 124;
 
   // TCCR0A – Timer/Counter Control Register A
   // COM0A1 COM0A0 COM0B1 COM0B0 – – WGM01 WGM00
@@ -115,7 +150,7 @@ void configuracao_Timer0(){
   // TCCR0B – Timer/Counter Control Register B
   // FOC0A FOC0B – – WGM02 CS02 CS01 CS0
   // 0     0         0     *    *    *    ==> escolher valores de acordo com prescaler
-  TCCR0B = 0xNN;
+  TCCR0B = 0x05;
 
   // TIMSK0 – Timer/Counter Interrupt Mask Register
   // – – – – – OCIE0B OCIE0A TOIE0
@@ -128,5 +163,12 @@ void configuracao_Timer0(){
 // Rotina de servico de interrupcao do temporizador
 ISR(TIMER0_COMPA_vect){
   // Insira aqui o código da rotina de serviço de interrupção disparada pelo temporizador
+  cont++;
+  cont_disp_c--;
+  if (cont_disp_p >= 0){
+    cont_disp_p--;
+  }
+  
+
 }
 
