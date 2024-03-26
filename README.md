@@ -7,4 +7,4 @@ link do fluxograma: https://excalidraw.com/#room=029f1f8105789c48c017,svo9WOEHsl
 
 ![Fluxograma](fluxograma/fluxograma.png)
 
-![Esquematico](imagens/Esquematico.png)
+![Esquematico](imagens/esquematico.png)
