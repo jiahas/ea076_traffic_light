@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <stdio.h>
+
 // Definição LDR
 #define LDR A0
 
@@ -30,6 +31,7 @@ int cont = 0;
 int state = 0;
 int cont_disp_c = 0;
 int cont_disp_p = 0;
+int pisca_disp = 63;
 // put function declarations here:
 
 
@@ -46,10 +48,10 @@ void setup() {
   pinMode(LDR, INPUT);
 
 // Registrador CD4511
-  DDRD = 0b01110000; // define os pinos 4 a 7 do Arduino como saídas, outros pinos como entrada
-  PORTD = 0b0000000; // Determina estado inicial dos pinos (porta D) com nível lógico baixo
+  DDRD = 0b00110000; // define os pinos 4 a 7 do Arduino como saídas, outros pinos como entrada
+  PORTD |= 0b0110000; // Determina estado inicial dos pinos (porta D) com nível lógico baixo
   DDRB = 0b00001111; // define os pinos 8 e 9 do Arduino como saídas, outros pinos como entrada
-  PORTB = 0b0000000; // Determina estado inicial dos pinos (porta B) com nível lógico baixo
+  PORTB |= 0b0000000; // Determina estado inicial dos pinos (porta B) com nível lógico baixo
   
 // Início
   digitalWrite(C_VERDE, HIGH);
@@ -89,40 +91,41 @@ void loop() {
     digitalWrite(C_VERMELHO, HIGH);
     digitalWrite(P_VERMELHO, LOW);
     digitalWrite(P_VERDE, HIGH);
-    cont_disp_c= 1125;
-    cont_disp_p= 625;
+    cont_disp_c = 1200;
+    cont_disp_p = 700;
+    pisca_disp = 63;
     cont = 0;
   }
   
-  if(cont >= 1125 && state == 3){
-    // Contagem do pedestre
-    Serial.print("Cruzamento aberto\n");
-    digitalWrite(P_VERDE, LOW);
-    digitalWrite(P_VERMELHO, HIGH);
-    digitalWrite(C_VERDE, HIGH);
-    digitalWrite(C_VERMELHO, LOW);
-    state = 0;
-  }
-  
-    
   if(state == 3){
+
+    if(cont >= 1125){
+      // Contagem do pedestre
+      Serial.print("Cruzamento aberto\n");
+      digitalWrite(P_VERDE, LOW);
+      digitalWrite(P_VERMELHO, HIGH);
+      digitalWrite(C_VERDE, HIGH);
+      digitalWrite(C_VERMELHO, LOW);
+      state = 0;
+    }
     // Seta display
     // Começa o decremento
-    PORTB = int(8*cont_disp_c/1000);
+    PORTB = int(8*cont_disp_c/1000); // 8ms * 1150 = 9.60 s
     PORTD &= ~(1<<5); // Ativa display carros
     PORTD |= (1<<5); // Trava o dígito no display carros
-    PORTB = int(8*cont_disp_p/1000);
-    PORTD &= ~(1<<4); // Ativa display pedestre
-    PORTD |= (1<<4); // Trava o dígito no display pedestre
-    if (cont_disp_c < 625){
-      cont = 0;
-      PORTD &= ~(0<<4);
-      if(cont>62){
-        PORTD |= (0<<4);
-        cont = 0;
-      }
+    
+    if(cont_disp_p >= 63){ // Verifica se a contage esta em valor limiar de 0.5s
+      
+      PORTB = int(8*cont_disp_p/1000); // 8ms * 650 = 5.60 s
+      PORTD &= ~(1<<4); // Ativa display pedestre
+      PORTD |= (1<<4); // Trava o dígito no display pedestre
+      
+    } else if(cont_disp_p <= 0){  // Incrementa o contador
+      cont_disp_p += 50;
     }
-  }	
+
+    
+  }
 
 
 }
@@ -168,7 +171,5 @@ ISR(TIMER0_COMPA_vect){
   if (cont_disp_p >= 0){
     cont_disp_p--;
   }
-  
-
 }
 
