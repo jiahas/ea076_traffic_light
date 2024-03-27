@@ -113,21 +113,19 @@ void loop() {
     PORTB = int(8*cont_disp_c/1000); // 8ms * 1150 = 9.60 s
     PORTD &= ~(1<<5); // Ativa display carros
     PORTD |= (1<<5); // Trava o dígito no display carros
-    
+
+	  PORTB = int(8*cont_disp_p/1000); // 8ms * 650 = 5.60 s
+
     if(cont_disp_p >= 63){ // Verifica se a contage esta em valor limiar de 0.5s
-      
-      PORTB = int(8*cont_disp_p/1000); // 8ms * 650 = 5.60 s
-      PORTD &= ~(1<<4); // Ativa display pedestre
-      PORTD |= (1<<4); // Trava o dígito no display pedestre
-      
-    } else if(cont_disp_p <= 0){  // Incrementa o contador
-      cont_disp_p += 50;
-    }
 
-    
+      PORTD &= ~(1<<COM_PEDESTRES); // Ativa display pedestre
+      PORTD |= (1<<COM_PEDESTRES); // Trava o dígito no display pedestre
+      
+    } else if(cont_disp_p <= 0){  // Quando a contagem do pedestre zerar
+      cont_disp_p += 126; 		  // Incrementa mais 1s para reiniciar o ciclo de blink de 0.5s ligado
+      							  // e 0.5s desligado
+    } 
   }
-
-
 }
 
 
