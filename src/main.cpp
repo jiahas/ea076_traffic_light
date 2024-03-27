@@ -5,22 +5,16 @@
 #define LDR A0
 
 // Definição dos Leds para os carros
-#define C_VERMELHO A1
-#define C_AMARELO A2
-#define C_VERDE A3
+#define C_VERMELHO 2
+#define C_AMARELO 4
+#define C_VERDE 8
 
 // Definição dos Leds para os pedestres
-#define P_VERMELHO A4
-#define P_VERDE A5
+#define P_VERMELHO 16
+#define P_VERDE 32
 
 // Definição botão dos pedestres
 #define BOTAO 6
-
-// Definição do decodificador de 7 segmentos CD4511
-#define ENTRADA_2 9
-#define ENTRADA_3 10
-#define ENTRADA_4 11
-#define ENTRADA_1 8
 
 // Definição dos displays de 7 segmentos
 #define COM_CARROS 5
@@ -31,31 +25,31 @@ int cont = 0;
 int state = 0;
 int cont_disp_c = 0;
 int cont_disp_p = 0;
-int pisca_disp = 63;
+
 // put function declarations here:
 
 
 void setup() {
 // Pinos de saida
-  pinMode(C_VERDE, OUTPUT);
-  pinMode(C_AMARELO, OUTPUT);
-  pinMode(C_VERMELHO, OUTPUT);
-  pinMode(P_VERDE, OUTPUT);
-  pinMode(P_VERMELHO, OUTPUT);
+// Configurando port C como saída para controle dos leds
+  DDRC = (C_VERMELHO|C_VERDE|C_AMARELO|
+         P_VERMELHO|P_VERDE);
+// Definindo estado inicial com led vermelho dos pedestres desligado
+// e led verde dos veiculos ligado
+  PORTC = (C_VERDE|P_VERMELHO);
 
 // Pinos de entrada
   pinMode(BOTAO, INPUT);
   pinMode(LDR, INPUT);
 
-// Registrador CD4511
-  DDRD = 0b00110000; // define os pinos 4 a 7 do Arduino como saídas, outros pinos como entrada
-  PORTD |= 0b0110000; // Determina estado inicial dos pinos (porta D) com nível lógico baixo
-  DDRB = 0b00001111; // define os pinos 8 e 9 do Arduino como saídas, outros pinos como entrada
-  PORTB |= 0b0000000; // Determina estado inicial dos pinos (porta B) com nível lógico baixo
+// Configurando port D como controle do catodo comum do disp de 7 seg  
+  DDRD = 0b00110000;  // define os pinos 4 e 5 do Arduino como saídas, outros pinos como entrada
+  PORTD = 0b0110000; // Determina estado inicial dos pinos (porta D) com nível lógico baixo
+
+// Configurando port B como saída do display de 7 seg
+  DDRB = 0b00001111; // define os pinos 8 a 12 do Arduino como saídas, outros pinos como entrada
+  PORTB = 0b0000000; // Determina estado inicial dos pinos (porta B) com nível lógico baixo
   
-// Início
-  digitalWrite(C_VERDE, HIGH);
-  digitalWrite(P_VERMELHO, HIGH);
 
   // Interrupções
   cli(); // desabilita as interrupções
@@ -76,8 +70,7 @@ void loop() {
   if(cont >= 13 && state==1){
     Serial.print("Farol amarelo aceso\n");
     state = 2;
-    digitalWrite(C_VERDE, LOW);
-    digitalWrite(C_AMARELO, HIGH);
+    PORTC = (C_AMARELO|P_VERMELHO);
     cont = 0;
    }
   
@@ -87,13 +80,9 @@ void loop() {
     // Inicio da contagem do displar
     // Carros em nove
     // Pedestre em cinco
-    digitalWrite(C_AMARELO, LOW);
-    digitalWrite(C_VERMELHO, HIGH);
-    digitalWrite(P_VERMELHO, LOW);
-    digitalWrite(P_VERDE, HIGH);
+    PORTC = (C_VERMELHO|P_VERDE);
     cont_disp_c = 1200;
     cont_disp_p = 700;
-    pisca_disp = 63;
     cont = 0;
   }
   
@@ -102,20 +91,17 @@ void loop() {
     if(cont >= 1125){
       // Contagem do pedestre
       Serial.print("Cruzamento aberto\n");
-      digitalWrite(P_VERDE, LOW);
-      digitalWrite(P_VERMELHO, HIGH);
-      digitalWrite(C_VERDE, HIGH);
-      digitalWrite(C_VERMELHO, LOW);
+      PORTC = (C_VERDE|P_VERMELHO);
       state = 0;
     }
     // Seta display
     // Começa o decremento
     PORTB = int(8*cont_disp_c/1000); // 8ms * 1150 = 9.60 s
-    PORTD &= ~(1<<5); // Ativa display carros
-    PORTD |= (1<<5); // Trava o dígito no display carros
-
+    PORTD &= ~(1<<COM_CARROS); // Ativa display carros
+    PORTD |= (1<<COM_CARROS); // Trava o dígito no display carros
+    
 	  PORTB = int(8*cont_disp_p/1000); // 8ms * 650 = 5.60 s
-
+    
     if(cont_disp_p >= 63){ // Verifica se a contage esta em valor limiar de 0.5s
 
       PORTD &= ~(1<<COM_PEDESTRES); // Ativa display pedestre
@@ -124,8 +110,12 @@ void loop() {
     } else if(cont_disp_p <= 0){  // Quando a contagem do pedestre zerar
       cont_disp_p += 126; 		  // Incrementa mais 1s para reiniciar o ciclo de blink de 0.5s ligado
       							  // e 0.5s desligado
-    } 
+    }
+
+    
   }
+
+
 }
 
 
@@ -170,4 +160,3 @@ ISR(TIMER0_COMPA_vect){
     cont_disp_p--;
   }
 }
-
