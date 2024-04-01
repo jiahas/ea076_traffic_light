@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include <stdio.h>
 
 // Definição LDR
 #define LDR A0
@@ -27,6 +26,49 @@ int cont_disp_c = 0;
 int cont_disp_p = 0;
 
 // put function declarations here:
+
+
+//função timer
+
+void configuracao_Timer0(){
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Configuracao Temporizador 0 (8 bits) para gerar interrupcoes periodicas a cada x ms 
+  // no modo Clear Timer on Compare Match (CTC)
+  // Frequência = 16e6 Hz
+  // Prescaler = escolha um valor entre 1, 8, 64, 256 e 1024
+  // Faixa = número de passos em OCR0A (contagem será de 0 até Faixa - 1)
+  // Intervalo entre interrupcoes: (Prescaler/Frequência)*Faixa 
+  
+  // OCR0A – Output Compare Register A
+  OCR0A = 124;
+
+  // TCCR0A – Timer/Counter Control Register A
+  // COM0A1 COM0A0 COM0B1 COM0B0 – – WGM01 WGM00
+  // 0      0      0      0          1     0
+  TCCR0A = 0x02;
+
+  // TCCR0B – Timer/Counter Control Register B
+  // FOC0A FOC0B – – WGM02 CS02 CS01 CS0
+  // 0     0         0     *    *    *    ==> escolher valores de acordo com prescaler
+  TCCR0B = 0x05;
+
+  // TIMSK0 – Timer/Counter Interrupt Mask Register
+  // – – – – – OCIE0B OCIE0A TOIE0
+  // – – – – – 0      1      0
+  TIMSK0 = 0x02;
+  
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+}
+
+// Rotina de servico de interrupcao do temporizador
+ISR(TIMER0_COMPA_vect){
+  // Insira aqui o código da rotina de serviço de interrupção disparada pelo temporizador
+  cont++;
+  cont_disp_c--;
+  if (cont_disp_p >= 0){
+    cont_disp_p--;
+  }
+}
 
 
 void setup() {
@@ -118,45 +160,3 @@ void loop() {
 
 }
 
-
-//função timer
-
-void configuracao_Timer0(){
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Configuracao Temporizador 0 (8 bits) para gerar interrupcoes periodicas a cada x ms 
-  // no modo Clear Timer on Compare Match (CTC)
-  // Frequência = 16e6 Hz
-  // Prescaler = escolha um valor entre 1, 8, 64, 256 e 1024
-  // Faixa = número de passos em OCR0A (contagem será de 0 até Faixa - 1)
-  // Intervalo entre interrupcoes: (Prescaler/Frequência)*Faixa 
-  
-  // OCR0A – Output Compare Register A
-  OCR0A = 124;
-
-  // TCCR0A – Timer/Counter Control Register A
-  // COM0A1 COM0A0 COM0B1 COM0B0 – – WGM01 WGM00
-  // 0      0      0      0          1     0
-  TCCR0A = 0x02;
-
-  // TCCR0B – Timer/Counter Control Register B
-  // FOC0A FOC0B – – WGM02 CS02 CS01 CS0
-  // 0     0         0     *    *    *    ==> escolher valores de acordo com prescaler
-  TCCR0B = 0x05;
-
-  // TIMSK0 – Timer/Counter Interrupt Mask Register
-  // – – – – – OCIE0B OCIE0A TOIE0
-  // – – – – – 0      1      0
-  TIMSK0 = 0x02;
-  
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-}
-
-// Rotina de servico de interrupcao do temporizador
-ISR(TIMER0_COMPA_vect){
-  // Insira aqui o código da rotina de serviço de interrupção disparada pelo temporizador
-  cont++;
-  cont_disp_c--;
-  if (cont_disp_p >= 0){
-    cont_disp_p--;
-  }
-}
