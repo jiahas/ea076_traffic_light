@@ -3,6 +3,10 @@
 // Definição LDR
 #define LDR A0
 
+// Periodo do dia
+#define DIA true
+#define NOITE false
+
 // Definição dos Leds para os carros
 #define C_VERMELHO 2
 #define C_AMARELO 4
@@ -21,9 +25,13 @@
 
 // Variaveis Globais
 int cont = 0;
+int cont_ldr = 0;
 int state = 0;
 int cont_disp_c = 0;
 int cont_disp_p = 0;
+int ldr = 0;
+int ldr_state = 0;
+bool periodo = true;
 
 // put function declarations here:
 
@@ -103,6 +111,40 @@ void setup() {
 
 void loop() {
 
+  ldr = analogRead(LDR);
+
+  if (cont_ldr > 126){
+
+    if (ldr < 100 && ldr_state < 3){
+
+      ldr_state++;
+      Serial.println(ldr_state);
+      if(ldr_state >= 3  && periodo != DIA){
+
+        periodo = DIA;
+        PORTC = (C_VERDE|P_VERMELHO);
+        ldr_state = 0;
+        cont = 0;
+
+      }
+
+    } else if(ldr >= 100 && ldr_state >= 0){
+
+      ldr_state--;
+      Serial.println(ldr_state);
+      if(ldr_state <= 0  && periodo != NOITE){
+
+        periodo = NOITE;
+        PORTC = (C_AMARELO|P_VERMELHO);
+        cont_disp_p = 126;
+        ldr_state = 0;
+
+      }
+    }
+  }
+
+  if (periodo == DIA){
+
   if(digitalRead(BOTAO) && state == 0){
     Serial.print("Pedestre apertou botao\n");
     state = 1;
@@ -157,6 +199,14 @@ void loop() {
     
   }
 
+  } else if (periodo == NOITE){
 
+        if(cont_disp_p >= 63){ // Verifica se a contage esta em valor limiar de 0.5s
+          PORTC &= ~(C_AMARELO);
+        } else if(cont_disp_p <= 0){  // Quando a contagem do pedestre zerar
+          PORTC |= (C_AMARELO);
+          cont_disp_p += 126; 		  // Incrementa mais 1s para reiniciar o ciclo de blink de 0.5s ligado
+                          // e 0.5s desligado
+        }
+    }
 }
-
