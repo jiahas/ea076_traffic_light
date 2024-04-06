@@ -255,7 +255,7 @@ void loop()
       PORTC &= ~(C_AMARELO);
       Serial.println("apaga amrelo");
       cont = 0;
-      blink = blink;
+      blink = !blink;
     }
     else if (cont >= 63 && blink)
     { // Quando a contagem do pedestre zerar
