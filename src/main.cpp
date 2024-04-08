@@ -1,20 +1,18 @@
 #include <Arduino.h>
 
-// Definição LDR
+// Definição da porta LDR
 #define LDR A0
 
 // Periodo do dia
 #define DIA true
 #define NOITE false
 
-// Definição dos Leds para os VEICULOS
+// Definição da posição dos Leds para os VEICULOS
 #define C_VERMELHO 2
 #define C_AMARELO 4
 #define C_VERDE 8
 
-#define LO_NIBBLE(b) ((b) & 0x0F)
-
-// Definição dos Leds para os pedestres
+// Definição da posição dos Leds para os pedestres
 #define P_VERMELHO 16
 #define P_VERDE 32
 
@@ -25,6 +23,7 @@
 #define COM_VEICULOS 5
 #define COM_PEDESTRES 4
 
+// Enum de estados
 typedef enum state_tag
 {
   ABERTO_PARA_VEICULOS,
@@ -44,11 +43,9 @@ int cont_disp_p = 0;
 int ldr = 0;
 int ldr_state = 0;
 bool periodo = true;
-int p_disp;
-int v_disp;
 bool blink = false;
-// função timer
 
+// Função timer do exemplo oferecido
 void configuracao_Timer0()
 {
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -86,7 +83,9 @@ void configuracao_Timer0()
 // Rotina de servico de interrupcao do temporizador
 ISR(TIMER0_COMPA_vect)
 {
-  // Insira aqui o código da rotina de serviço de interrupção disparada pelo temporizador
+  // A interrução irá incrementar/decrementar os contadores padrão,
+  // do ldr, do display para veiculos e para pedestres a cada 8ms, ou seja
+  // para contar 1s deverá haver 1125 incrementos para a variavel cont.
   cont++;
   cont_ldr++;
   cont_disp_v--;
@@ -102,6 +101,7 @@ void setup()
   // Configurando port C como saída para controle dos leds
   DDRC = (C_VERMELHO | C_VERDE | C_AMARELO |
           P_VERMELHO | P_VERDE);
+
   // Definindo estado inicial com led vermelho dos pedestres desligado
   // e led verde dos veiculos ligado
   PORTC = (C_VERDE | P_VERMELHO);
@@ -122,7 +122,7 @@ void setup()
   cli();                 // desabilita as interrupções
   configuracao_Timer0(); // configura o temporizador
   sei();                 // habilita as interrupções
-  Serial.begin(9600);
+
 }
 
 void loop()
@@ -139,8 +139,10 @@ void loop()
 
     ldr = analogRead(LDR);
 
-    // Caso a leitura do ldr for menor que 100
-    //
+    // Caso a leitura do ldr for menor que 650
+    // e quanto não houverem 3 detecções abaixo de 650, irá incrementar o numero de detecções
+    // após 3 detecções e caso não seja periodo de DIA, dará se ao início o estado de ABERTO_PARA_VEICULOS
+    // e acendendo os faróis correspondentes.
     if (ldr < 650 && ldr_state < 3)
     {
 
@@ -151,10 +153,14 @@ void loop()
         PORTC = (C_VERDE | P_VERMELHO);
         ldr_state = 0;
         cont = 0;
-        state = 0;
+        state = ABERTO_PARA_VEICULOS;
       }
     }
-    else if (ldr >= 650 && ldr_state >= 0 && state == 0)
+// Da mesma forma caso seja detectado acima de 650 e enquanto houver um número de contagens maior que 0,
+// irá decrementar até que se atinja 3 medições acima de 650 ou um número negativo de ldr_state.
+// Além disso só irá mudar para o período noturno caso o estado atual da máquina de estados esteja
+// em ABERTO_PARA_VEICULOS para não interromper a rotina de travessia dos pedestres.
+    else if (ldr >= 650 && ldr_state >= 0 && state == ABERTO_PARA_VEICULOS)
     {
 
       ldr_state--;
@@ -170,12 +176,22 @@ void loop()
     cont_ldr = 0;
   }
 
+// Rotina do período de dia
+// É uma máquina de estados que irá ciclar entre os estados:
+// -ABERTO_PARA_VEICULOS
+// -SEMAFORO_AMARELO
+// -ABETO_PARA_PEDESTRES
+// -ATUALIZA_DISPLAY_VEICULOS
+// -ATUALIZA_DISPLAY_PEDESTRES
+// -ABERTO_PARA_VEICULOS
   if (periodo == DIA)
   {
 
     switch (state)
     {
 
+// Se botao dos pedestres for pressionado, irá entrar no próximo estado
+// SEMAFORO_AMARELO e zerar a contagem de cont.
     case ABERTO_PARA_VEICULOS:
       if (digitalRead(BOTAO))
       {
@@ -184,6 +200,10 @@ void loop()
       }
       break;
 
+// Não fará nada até que tenha se passado 13*8 = 104ms
+// Após este tempo irá acender o farol amarelo para os veiculos
+// e manter o vermelho para os pedestres, atualizar para o próximo
+// estado para ABERTO_PARA_PEDESTRES e zerar o cont.
     case SEMAFORO_AMARELO:
 
       if (cont >= 13)
@@ -194,6 +214,12 @@ void loop()
       }
       break;
 
+// Após 500*8=4000ms, isto é o led amarelo irá ficar aceso por 4s
+// e irá se apagar para fechar o farol para os veiculos e abrir para
+// os pedeestres. Logo em seguida irá definir os valores de cont_disp_v
+// para 1200*8=9600ms e cont_disp_p para 700*8=5600ms para iniciar a contagem
+// regressiva no display tanto para pedestre quanto para veiculos.
+// E irá prosseguir para o próximo estado para ATUALIZA_DISPLAY_VEICULOS
     case ABERTO_PARA_PEDESTRES:
 
       if (cont >= 500)
@@ -209,12 +235,23 @@ void loop()
       }
       break;
 
+// Irá definir o valor na saída do PORTB para visualizar o tempo
+// de aguardo dos veiculos, para podermos amostrar ao mesmo tempo
+// em ambos os displays, veiculos e pedestres, precisamos ativar e
+// desativar ambos sequencialmente causando a ilusãod e que estão
+// ligados simultaneamente. Um if cont >= 1 foi inserido para dar tempo
+// do display de 7seg atingir o brilho máximo, caso contrário será
+// muito rápido e o brilho muito fraco.
+// Além disso será verificado se a contagem de 9s chegou ao fim a
+// partir de cont_disp_v. Quando a condição for satisfeita, irá apagar o display
+// e mudar o estado dos farois para verde para veiculos e vermelho para pedestres
+// retornando ao estado inicial
     case ATUALIZA_DISPLAY_VEICULOS:
-      PORTB = (8*cont_disp_v)/1000;           // 8ms * 1150 = 9.60 s
+      PORTB = (8*cont_disp_v)/1000;           // 8ms * 1200 = 9.60 s
       PORTD &= ~(1 << COM_VEICULOS); // Ativa display VEICULOS
 
       if (cont >= 1){
-        PORTD |= (1 << COM_VEICULOS); // Trava o dígito no display VEICULOS
+        PORTD |= (1 << COM_VEICULOS); // Desativa display VEICULOS
         state = ATUALIZA_DISPLAY_PEDESTRES;
         cont = 0;
       }
@@ -229,6 +266,15 @@ void loop()
 
       break;
 
+// Da mesma forma que o ATUALIZA_DISPLAY_VEICULOS, as operações
+// para ligar o display serão as mesmas com o detalhe de que
+// o do pedestre irá piscar por 4s quando chegar a 0.
+// Para isso quando a cont_disp_p for menor que 63*8=504ms
+// ele não irá acender o display e irá incrementar o cont_disp_p
+// para +1008ms quando cont_disp_p zerar.
+// A mesma tratativa para mudança de estado do ATUALIZA_DISPLAY_VEICULOS
+// foi implementada, após 8ms o display dos pedestres irá desligar
+// prosseguindo para o próximo estado ATUALIZA_DISPLAY_VEICULOS
     case ATUALIZA_DISPLAY_PEDESTRES:
       PORTB = (8*cont_disp_p)/1000; // 8ms * 650 = 5.60 s
       if (cont_disp_p >=63){
@@ -247,20 +293,21 @@ void loop()
       break;
     }
   }
+
+// No periodo de noturno, a cada 504ms o led amarelo irá acender e apagar
+// conforme a variável blink.
   else if (periodo == NOITE)
   {
 
     if (cont >= 63 && !blink)
     { // Verifica se a contage esta em valor limiar de 0.5s
       PORTC &= ~(C_AMARELO);
-      Serial.println("apaga amrelo");
       cont = 0;
       blink = !blink;
     }
     else if (cont >= 63 && blink)
     { // Quando a contagem do pedestre zerar
       PORTC |= (C_AMARELO);
-      Serial.println("acende amarelo");
       cont = 0;
       blink = !blink; // Incrementa mais 1s para reiniciar o ciclo de blink de 0.5s ligado
                  // e 0.5s desligado
