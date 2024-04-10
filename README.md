@@ -6,6 +6,6 @@ https://www.tinkercad.com/things/aqru2C4YlyA-ea076-semaforo?sharecode=U8uEEK3Mvp
 
 link do fluxograma: https://excalidraw.com/#room=029f1f8105789c48c017,svo9WOEHslKvmaL2muIlKQ
 
-![Fluxograma](fluxograma/fluxograma.png)
+![Fluxograma](fluxograma/fluxograma.jpg)
 
 ![Esquematico](imagens/esquematico.png)
