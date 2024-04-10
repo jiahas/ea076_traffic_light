@@ -268,7 +268,6 @@ void loop()
       else if (cont_disp_v <= 625)
       {
         PORTC &= ~(P_VERDE);
-        PORTC |= (P_VERMELHO);
       }
 
       break;
@@ -294,12 +293,13 @@ void loop()
         if (cont_disp_p >= 63) // nos últimos segundos irá entrar na rotina de piscar o display e o led
         {
           PORTD &= ~(1 << COM_PEDESTRES); // Ativa display pedestre
-          PORTC &= ~(P_VERMELHO);         // Desativa o led vermelho
+          PORTC |= (P_VERMELHO);         // Ativa o led vermelho
         }
         else if (cont_disp_p <= 0)
         {
-          PORTC |= (P_VERMELHO);
           cont_disp_p += 126;
+        } else {
+          PORTC &= ~(P_VERMELHO); // Desativa LED vermelho
         }
       }
 
