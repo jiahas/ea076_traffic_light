@@ -267,7 +267,7 @@ void loop()
       }
       else if (cont_disp_v <= 625)
       {
-        PORTC &= ~(P_VERDE);
+        PORTC &= ~(P_VERDE); // Apaga led verde
       }
 
       break;
